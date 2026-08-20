@@ -1,7 +1,7 @@
 import React, {useState} from 'react'
 import axios from 'axios'
 
-export default function Login({onLogin}){
+export default function Login({onLogin, onRegister}){
   const [user, setUser] = useState('')
   const [pass, setPass] = useState('')
   const [err, setErr] = useState('')
@@ -18,6 +18,7 @@ export default function Login({onLogin}){
       <input className="w-full p-2 mb-2 rounded bg-gray-900" placeholder="username" value={user} onChange={e=>setUser(e.target.value)} />
       <input type="password" className="w-full p-2 mb-2 rounded bg-gray-900" placeholder="password" value={pass} onChange={e=>setPass(e.target.value)} />
       <button className="w-full bg-indigo-600 p-2 rounded" onClick={doLogin}>Login</button>
+      <button className="w-full mt-3 border border-gray-600 p-2 rounded" onClick={onRegister}>Create an account</button>
       {err && <div className="text-red-400 mt-2">{err}</div>}
     </div>
   )

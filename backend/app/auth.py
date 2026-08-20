@@ -1,5 +1,8 @@
 import os
-from passlib.context import CryptContext
+import base64
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta
 import jwt
 from fastapi import HTTPException, Depends
@@ -11,14 +14,24 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret')
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', '60'))
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 310000)
+    return 'pbkdf2_sha256$310000$' + base64.urlsafe_b64encode(salt).decode() + '$' + base64.urlsafe_b64encode(digest).decode()
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        scheme, iterations, encoded_salt, encoded_digest = hashed.split('$', 3)
+        if scheme != 'pbkdf2_sha256':
+            return False
+        salt = base64.urlsafe_b64decode(encoded_salt.encode())
+        expected = base64.urlsafe_b64decode(encoded_digest.encode())
+        actual = hashlib.pbkdf2_hmac('sha256', plain.encode('utf-8'), salt, int(iterations))
+        return hmac.compare_digest(actual, expected)
+    except (ValueError, TypeError):
+        return False
 
 def create_access_token(subject: str) -> str:
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
