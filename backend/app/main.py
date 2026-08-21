@@ -23,3 +23,7 @@ app.include_router(scan_router.router)
 @app.get('/')
 def root():
     return {'status': 'ok'}
+
+@app.get('/health')
+def health():
+    return {'status': 'ok'}

@@ -12,6 +12,6 @@ def check_cookies(url, timeout=10):
                 'httponly': c.has_nonstandard_attr('HttpOnly') if hasattr(c, 'has_nonstandard_attr') else False,
                 'samesite': c._rest.get('SameSite') if hasattr(c, '_rest') else None
             })
-        return {'cookies': cookies}
+        return {'available': True, 'count': len(cookies), 'cookies': cookies}
     except Exception as e:
-        return {'error': str(e)}
+        return {'available': False, 'error': str(e), 'cookies': []}
