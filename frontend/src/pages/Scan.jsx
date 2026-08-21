@@ -1,7 +1,7 @@
 import React, {useState} from 'react'
 import axios from 'axios'
 
-export default function Scan({token, onResult}){
+export default function Scan({token, onResult, onUnauthorized}){
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -18,6 +18,10 @@ export default function Scan({token, onResult}){
       onResult(res.data.result)
     }catch(e){
       console.error(e)
+      if(e.response?.status === 401){
+        onUnauthorized()
+        return
+      }
       const detail = e.response?.data?.detail
       setError(detail || 'Cannot connect to the backend. Start FastAPI on http://127.0.0.1:8000 and try again.')
       onResult(null)
