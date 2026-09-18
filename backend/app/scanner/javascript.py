@@ -11,6 +11,6 @@ def find_js(url, timeout=10):
             src = s.get('src')
             if src:
                 scripts.append(urljoin(r.url, src))
-        return {'scripts': scripts}
+        return {'available': True, 'status': 'Detected' if scripts else 'Not Detected', 'scripts': scripts}
     except Exception as e:
-        return {'error': str(e)}
+        return {'available': False, 'status': 'Could not determine', 'error': str(e), 'scripts': []}

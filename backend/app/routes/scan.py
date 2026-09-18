@@ -1,5 +1,6 @@
 import json
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from ..database import get_db
 from .. import models, schemas
@@ -49,8 +50,11 @@ def pdf_report(scan_id: int, db: Session = Depends(get_db), user_id: str = Depen
     data = json.loads(s.result)
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_title('Web Application Attack Surface Analyzer Report')
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Web Application Attack Surface Analyzer Report', ln=True)
+    pdf.cell(0, 10, 'Web Application Attack Surface Analyzer', ln=True)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(0, 7, 'Security analysis report', ln=True)
     pdf.set_font('Arial', '', 12)
     pdf.cell(0, 8, f'URL: {s.url}', ln=True)
     pdf.cell(0, 8, f'Date: {s.created_at}', ln=True)
@@ -62,6 +66,22 @@ def pdf_report(scan_id: int, db: Session = Depends(get_db), user_id: str = Depen
     pdf.cell(0, 8, f"Score: {score.get('score', 'N/A')} - Level: {score.get('level', 'N/A')}", ln=True)
     pdf.ln(4)
     pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, 'Summary', ln=True)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 6, f"This report summarizes the checks that could be completed for {s.url}. A missing resource is not treated as a security failure unless it creates a clear risk.")
+    pdf.ln(3)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, 'Findings', ln=True)
+    pdf.set_font('Arial', '', 11)
+    findings = data.get('findings', [])
+    if findings:
+        for finding in findings:
+            pdf.multi_cell(0, 6, f"[{finding.get('severity', 'Info')}] {finding.get('title', 'Finding')} - {finding.get('explanation', '')}")
+            pdf.multi_cell(0, 6, f"Recommendation: {finding.get('recommendation', 'Review this result.')}")
+    else:
+        pdf.multi_cell(0, 6, 'No findings were generated from the completed checks.')
+    pdf.ln(3)
+    pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 8, 'Recommendations', ln=True)
     pdf.set_font('Arial', '', 11)
     for r in data.get('recommendations', []):
@@ -70,4 +90,4 @@ def pdf_report(scan_id: int, db: Session = Depends(get_db), user_id: str = Depen
     os.makedirs(out_dir, exist_ok=True)
     filename = os.path.join(out_dir, f'report_{s.id}.pdf')
     pdf.output(filename)
-    return {'report_path': filename}
+    return FileResponse(filename, media_type='application/pdf', filename=f'wasa-report-{s.id}.pdf')

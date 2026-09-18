@@ -7,10 +7,10 @@ def score(result: dict) -> dict:
     present = len(headers) - len(missing)
     header_score = int((present / len(headers)) * 70) if headers else 0
     ssl_result = result.get('ssl', {})
-    tls_score = 25 if ssl_result.get('available') else 0
+    tls_score = 25 if ssl_result.get('available') and ssl_result.get('https') else 0
     cookie_score = 10 if result.get('cookies', {}).get('available') else 0
     score_pct = min(100, header_score + tls_score + cookie_score)
-    transport_failure = ssl_result.get('https') and not ssl_result.get('available')
+    transport_failure = ssl_result.get('available') and not ssl_result.get('https')
     level = 'High' if transport_failure or score_pct < 25 else 'Medium' if score_pct < 70 else 'Low'
     return {'score': score_pct, 'level': level, 'missing_headers': missing, 'present_headers': present, 'total_headers': len(headers)}
 
@@ -22,6 +22,6 @@ def recommendations(result: dict) -> list:
     for name, val in headers.items():
         if not val:
             recs.append(f'Add {name} header with recommended directives')
-    if result.get('ssl', {}).get('note') == 'Non-HTTPS URL':
+    if result.get('ssl', {}).get('available') and not result.get('ssl', {}).get('https'):
         recs.append('Use HTTPS with a valid TLS certificate')
     return recs

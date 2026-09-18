@@ -8,7 +8,7 @@ def fetch_sitemap(url, timeout=10):
         sitemap_url = urljoin(base, '/sitemap.xml')
         r = requests.get(sitemap_url, timeout=timeout)
         if r.status_code == 200:
-            return {'url': sitemap_url, 'content': r.text}
-        return {'url': sitemap_url, 'status_code': r.status_code}
+            return {'available': True, 'status': 'Available', 'url': sitemap_url, 'content': r.text}
+        return {'available': True, 'status': 'Not Available', 'url': sitemap_url, 'status_code': r.status_code}
     except Exception as e:
-        return {'error': str(e)}
+        return {'available': False, 'status': 'Could not determine', 'error': str(e)}

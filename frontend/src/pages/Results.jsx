@@ -1,59 +1,18 @@
 import React from 'react'
-
-export default function Results({data}){
-  if(!data) return null
-  const score = data.score || {}
-  const headers = data.headers || {}
-  const cookies = data.cookies || {}
-  const technologies = data.technologies?.technologies || []
-  const certificate = data.ssl?.certificate
-  const list = (value) => Array.isArray(value) && value.length ? value.join('\n') : 'Not detected'
-  return (
-    <div className="bg-gray-800 p-4 rounded">
-      <h3 className="text-lg font-semibold mb-2">Results</h3>
-      {data.error && <div className="text-red-400">{data.error}</div>}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <div className="font-bold">Security Score</div>
-          <div className="text-3xl">{score.score ?? 'Unavailable'}</div>
-        </div>
-        <div>
-          <div className="font-bold">Risk Level</div>
-          <div>{score.level || 'Unavailable'}</div>
-        </div>
-      </div>
-      <div className="mt-4">
-        <h4 className="font-semibold">Headers</h4>
-        <div className="text-sm bg-gray-900 p-2 rounded">
-          <div>Response: {headers.available ? `${headers.status_code} ${headers.final_url || ''}` : 'Unavailable'}</div>
-          <div>Present: {list(headers.present)}</div>
-          <div>Missing: {list(headers.missing)}</div>
-        </div>
-      </div>
-      <div className="mt-4">
-        <h4 className="font-semibold">Cookies</h4>
-        <pre className="text-sm bg-gray-900 p-2 rounded max-h-48 overflow-auto">{cookies.available ? JSON.stringify(cookies.cookies || [], null, 2) : 'Unavailable'}</pre>
-      </div>
-      <div className="mt-4">
-        <h4 className="font-semibold">SSL/TLS</h4>
-        <pre className="text-sm bg-gray-900 p-2 rounded max-h-48 overflow-auto">{certificate ? JSON.stringify({subject: certificate.subject, issuer: certificate.issuer, validFrom: certificate.notBefore, validUntil: certificate.notAfter}, null, 2) : (data.ssl?.note || data.ssl?.error || 'Not detected')}</pre>
-      </div>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <div><h4 className="font-semibold">robots.txt</h4><pre className="text-sm bg-gray-900 p-2 rounded max-h-32 overflow-auto">{data.robots?.content || (data.robots?.status_code ? `HTTP ${data.robots.status_code}` : 'Unavailable')}</pre></div>
-        <div><h4 className="font-semibold">sitemap.xml</h4><pre className="text-sm bg-gray-900 p-2 rounded max-h-32 overflow-auto">{data.sitemap?.content || (data.sitemap?.status_code ? `HTTP ${data.sitemap.status_code}` : 'Unavailable')}</pre></div>
-      </div>
-      <div className="mt-4">
-        <h4 className="font-semibold">Technologies</h4>
-        <div className="text-sm bg-gray-900 p-2 rounded">{technologies.length ? technologies.map(item => <div key={`${item.name}-${item.value}`}>{item.name}: {item.value} <span className="text-gray-400">({item.evidence})</span></div>) : 'No known technologies detected'}</div>
-      </div>
-      <div className="mt-4">
-        <h4 className="font-semibold">JavaScript resources</h4>
-        <pre className="text-sm bg-gray-900 p-2 rounded max-h-32 overflow-auto">{list(data.javascript?.scripts)}</pre>
-      </div>
-      <div className="mt-4">
-        <h4 className="font-semibold">Recommendations</h4>
-        <div className="text-sm bg-gray-900 p-2 rounded">{list(data.recommendations)}</div>
-      </div>
-    </div>
-  )
-}
+const info={headers:['Security Headers','Security headers are instructions sent by a website to the browser that help protect users from common web attacks.'],cookies:['Cookies','Cookies store small pieces of information in your browser. Security settings help prevent other websites or scripts from misusing them.'],ssl:['SSL/TLS','SSL/TLS encrypts the connection between your browser and the website so information cannot easily be read while travelling.'],structure:['Website Structure','These checks show whether the site publishes crawl instructions, a page index, and links to JavaScript resources.'],technology:['Technology Stack','This identifies technologies that appear to be used by the website, such as web servers, frameworks and libraries.'],findings:['Findings','Findings are the checks that may need attention. A missing resource is not automatically a security problem.']}
+export default function Results({data,section,url,createdAt}){const score=data.score||{};if(section==='overview')return <Overview data={data} score={score} url={url} createdAt={createdAt}/>;if(section==='headers')return <Panel title={info.headers[0]} text={info.headers[1]}><Headers data={data.headers||{}}/></Panel>;if(section==='cookies')return <Panel title={info.cookies[0]} text={info.cookies[1]}><Cookies data={data.cookies||{}}/></Panel>;if(section==='ssl')return <Panel title={info.ssl[0]} text={info.ssl[1]}><SSL data={data.ssl||{}}/></Panel>;if(section==='structure')return <Panel title={info.structure[0]} text={info.structure[1]}><Structure data={data}/></Panel>;if(section==='technology')return <Panel title={info.technology[0]} text={info.technology[1]}><Technology data={data.technologies||{}}/></Panel>;if(section==='findings')return <Panel title={info.findings[0]} text={info.findings[1]}><Findings data={data.findings||[]}/></Panel>;return <Overview data={data} score={score} url={url} createdAt={createdAt}/>}
+function Overview({data,score,url,createdAt}){const findings=data.findings||[];return <section className="dashboard"><div className="hero-row"><div><span className="eyebrow">LATEST ANALYSIS</span><h2>{url||'Analyzed website'}</h2><p className="muted">{createdAt?new Date(createdAt).toLocaleString():'Just completed'} · All checks use live response data</p></div><div className="score-ring"><strong>{score.score??'—'}</strong><span>/ 100</span></div></div><div className="stat-grid"><Stat label="Risk level" value={score.level||'Could not determine'}/><Stat label="Findings" value={findings.length}/><Stat label="Headers present" value={`${score.present_headers??'—'} / ${score.total_headers??'—'}`}/></div><div className="overview-grid"><div className="card"><h3>Finding summary</h3>{findings.length?findings.slice(0,4).map(f=><Finding key={f.title} item={f}/>):<p className="muted">No findings were generated from the completed checks.</p>}</div><div className="card"><h3>Severity profile</h3><Chart findings={findings}/></div></div></section>}
+function Panel({title,text,children}){return <section className="page-section"><div className="section-heading"><div><span className="eyebrow">ANALYSIS MODULE</span><h2>{title}</h2></div></div><div className="explain"><span>?</span><div><b>What is this?</b><p>{text}</p></div></div>{children}</section>}
+function Headers({data}){return <div className="card"><div className="result-line"><Status value={data.available?'Available':'Could not determine'}/><span>{data.available?`${data.status_code} · ${data.final_url||''}`:data.error}</span></div><div className="two-col"><Metric title="Present" value={data.present?.length||0}/><Metric title="Missing" value={data.missing?.length||0}/></div><div className="tag-list">{(data.present||[]).map(x=><span className="tag good" key={x}>✓ {x}</span>)}{(data.missing||[]).map(x=><span className="tag warn" key={x}>! {x}</span>)}</div><p className="why">Why it matters: these controls help browsers block unsafe framing, scripts, content types, and unwanted tracking behavior.</p></div>}
+function Cookies({data}){return <div className="card"><div className="result-line"><Status value={data.status||'Could not determine'}/><span>{data.count??0} cookie{data.count===1?'':'s'} observed</span></div>{data.cookies?.length?<div className="table-wrap"><table><thead><tr><th>Name</th><th>Secure</th><th>HttpOnly</th><th>SameSite</th></tr></thead><tbody>{data.cookies.map(c=><tr key={c.name}><td className="strong">{c.name}</td><td><Bool value={c.secure}/></td><td><Bool value={c.httponly}/></td><td>{c.samesite||'Not set'}</td></tr>)}</tbody></table></div>:<p className="muted">No cookies were returned by the website.</p>}<p className="why">Why it matters: Secure, HttpOnly, and SameSite settings reduce the chance that cookies are intercepted or misused.</p></div>}
+function SSL({data}){return <div className="card"><div className="result-line"><Status value={data.status||'Could not determine'}/><span>{data.https?'Encrypted HTTPS connection':data.note||data.error||'No certificate information available'}</span></div>{data.certificate&&<div className="cert-grid"><Metric title="Issued by" value={data.certificate.issuer?.[0]?.[0]?.[1]||'Available'}/><Metric title="Valid from" value={data.certificate.notBefore||'Available'}/><Metric title="Valid until" value={data.certificate.notAfter||'Available'}/></div>}<p className="why">Why it matters: encryption protects credentials and other information while it travels between the browser and the website.</p></div>}
+function Structure({data}){return <div className="overview-grid"><Resource title="robots.txt" data={data.robots}/><Resource title="sitemap.xml" data={data.sitemap}/><Resource title="JavaScript resources" data={data.javascript}/></div>}
+function Resource({title,data={}}){const content=data.content||data.scripts?.join('\n');return <div className="card"><h3>{title}</h3><div className="result-line"><Status value={data.status||(content?'Detected':'Not Available')}/></div>{content?<pre>{content}</pre>:<p className="muted">{data.error||'No content was returned.'}</p>}</div>}
+function Technology({data}){return <div className="card">{data.available===false?<p className="muted">Could not determine technologies: {data.error}</p>:data.technologies?.length?<div>{data.technologies.map(x=><div className="tech-row" key={`${x.name}-${x.value}`}><div><h3>{x.name}</h3><p>{x.value}</p></div><div className="tech-evidence"><span className="tag">{x.confidence||'Possible'}</span><small>Evidence: {x.evidence}</small></div></div>)}</div>:<p className="muted">No technologies could be identified with reasonable evidence.</p>}</div>}
+function Findings({data}){return <div className="card">{data.length?data.map(x=><Finding key={x.title} item={x} full/>):<p className="muted">No findings were generated from the completed checks.</p>}</div>}
+function Finding({item,full}){return <div className={full?'finding full':'finding'}><div className="finding-title"><Status value={item.severity}/><b>{item.title}</b></div><p>{item.explanation}</p>{full&&<p className="recommendation"><b>Recommendation:</b> {item.recommendation}</p>}</div>}
+function Chart({findings}){const values=['High','Medium','Low'].map(level=>({level,count:findings.filter(x=>x.severity===level).length}));const max=Math.max(...values.map(x=>x.count),1);return <div className="chart">{values.map(x=><div className="bar-row" key={x.level}><span>{x.level}</span><div><i className={x.level.toLowerCase()} style={{width:`${Math.max(8,x.count/max*100)}%`}}/></div><b>{x.count}</b></div>)}</div>}
+function Stat({label,value}){return <div className="stat"><span>{label}</span><strong>{value}</strong></div>}
+function Metric({title,value}){return <div className="metric"><span>{title}</span><strong>{value}</strong></div>}
+function Status({value}){return <span className="status">{value}</span>}
+function Bool({value}){return <span className={value?'boolean yes':'boolean no'}>{value?'Yes':'No'}</span>}

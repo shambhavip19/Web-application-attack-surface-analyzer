@@ -1,33 +1,25 @@
-import React from 'react'
-import { useState } from 'react'
+import React, {useEffect, useState} from 'react'
+import axios from 'axios'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Scan from './pages/Scan'
 import Results from './pages/Results'
 
+const base = 'http://127.0.0.1:8000'
+const nav = [['overview','◈','Dashboard'],['scan','+','New Scan'],['history','◷','Scan Results'],['headers','▤','Security Headers'],['cookies','◌','Cookies'],['ssl','⌁','SSL/TLS'],['structure','⌘','Website Analysis'],['technology','◫','Technology Stack'],['findings','!','Findings'],['history','◷','Scan History'],['reports','▣','Reports'],['settings','⚙','Settings']]
+
 export default function App(){
-  const [token, setToken] = useState(localStorage.getItem('token'))
-  const [scanResult, setScanResult] = useState(null)
-  const [showRegister, setShowRegister] = useState(false)
-  function logout(){
-    localStorage.removeItem('token')
-    setToken(null)
-    setScanResult(null)
-  }
-  if(!token) {
-    return showRegister ? (
-      <Register onRegistered={() => setShowRegister(false)} onBack={() => setShowRegister(false)} />
-    ) : (
-      <Login onLogin={(t)=>{setToken(t); localStorage.setItem('token', t)}} onRegister={() => setShowRegister(true)} />
-    )
-  }
-  return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Web Application Attack Surface Analyzer</h1>
-        <Scan token={token} onResult={setScanResult} onUnauthorized={logout} />
-        {scanResult && <Results data={scanResult} />}
-      </div>
-    </div>
-  )
+  const [token,setToken]=useState(localStorage.getItem('token')); const [scan,setScan]=useState(null); const [history,setHistory]=useState([]); const [section,setSection]=useState('overview'); const [mode,setMode]=useState('overview'); const [showRegister,setShowRegister]=useState(false); const [loading,setLoading]=useState(false)
+  function logout(){localStorage.removeItem('token');setToken(null);setScan(null)}
+  async function loadHistory(){setLoading(true);try{const r=await axios.get(base+'/scan/history',{headers:{Authorization:`Bearer ${token}`}});setHistory(r.data)}catch(e){if(e.response?.status===401)logout()}finally{setLoading(false)}}
+  useEffect(()=>{if(token)loadHistory()},[token])
+  async function openScan(id){try{const r=await axios.get(`${base}/scan/${id}`,{headers:{Authorization:`Bearer ${token}`}});setScan(r.data);setSection('overview')}catch(e){if(e.response?.status===401)logout()}}
+  async function downloadReport(id){const r=await axios.get(`${base}/scan/report/${id}`,{headers:{Authorization:`Bearer ${token}`},responseType:'blob'});const a=document.createElement('a');a.href=URL.createObjectURL(r.data);a.download=`wasa-report-${id}.pdf`;a.click()}
+  if(!token)return showRegister?<Register onRegistered={()=>setShowRegister(false)} onBack={()=>setShowRegister(false)}/>:<Login onLogin={t=>{setToken(t);localStorage.setItem('token',t)}} onRegister={()=>setShowRegister(true)}/>
+  const result=scan?.result||scan
+  return <div className="app-shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">✦</span><span>WASA<small>SECURITY ANALYZER</small></span></div><div className="side-label">Workspace</div><nav>{nav.map(([id,icon,label],i)=><button key={`${id}-${i}`} className={section===id?'nav-item active':'nav-item'} onClick={()=>setSection(id)}><b>{icon}</b>{label}</button>)}</nav><button className="logout" onClick={logout}>↪ Sign out</button></aside><main className="main-content"><header className="topbar"><div><span className="eyebrow">SECURITY OPERATIONS</span><h1>{section==='scan'?'Start a new analysis':section==='reports'?'Reports':'Web security overview'}</h1></div><div className="top-actions"><span className="live-dot">● System ready</span><button className="icon-button" onClick={()=>setSection('settings')}>⚙</button></div></header>{section==='scan'&&<Scan token={token} onResult={r=>{setScan({result:r});setSection('overview');loadHistory()}} onUnauthorized={logout}/>} {section==='history'&&<History items={history} loading={loading} onOpen={openScan}/>} {section==='reports'&&<Reports items={history} onOpen={openScan} onDownload={downloadReport}/>} {section==='settings'&&<Empty title="Workspace settings" text="Settings will appear here as workspace controls are added."/>}{section!=='scan'&&section!=='history'&&section!=='reports'&&section!=='settings'&&(!result?<Empty title="No scan selected" text="Run a new scan to populate this workspace with real analysis data." action="New scan" onAction={()=>setSection('scan')}/>:<><div className="mode-switch"><span>Dashboard view</span><button className={mode==='overview'?'selected':''} onClick={()=>setMode('overview')}>Overview</button><button className={mode==='detailed'?'selected':''} onClick={()=>setMode('detailed')}>Detailed</button></div><Results data={result} section={section} detailed={mode==='detailed'} url={scan?.url} createdAt={scan?.created_at}/></>)}</main></div>
 }
+function History({items,loading,onOpen}){return <section className="page-section"><div className="section-heading"><div><span className="eyebrow">ARCHIVE</span><h2>Scan history</h2></div><span className="muted">{items.length} saved scan{items.length===1?'':'s'}</span></div>{loading?<Loading/>:items.length?<div className="table-wrap"><table><thead><tr><th>Website</th><th>Scan date</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id}><td className="strong">{x.url}</td><td>{new Date(x.created_at).toLocaleString()}</td><td><button className="text-button" onClick={()=>onOpen(x.id)}>View scan →</button></td></tr>)}</tbody></table></div>:<Empty title="No scan history" text="Completed scans will appear here."/>}</section>}
+function Reports({items,onOpen,onDownload}){return <section className="page-section"><div className="section-heading"><div><span className="eyebrow">DOCUMENT CENTER</span><h2>Reports</h2></div></div>{items.length?<div className="report-grid">{items.map(x=><article className="report-card" key={x.id}><span className="report-icon">▣</span><div><h3>{x.url}</h3><p>{new Date(x.created_at).toLocaleDateString()} · Scan #{x.id}</p></div><div className="report-actions"><button className="text-button" onClick={()=>onOpen(x.id)}>View</button><button className="primary small" onClick={()=>onDownload(x.id)}>Download PDF</button></div></article>)}</div>:<Empty title="No reports yet" text="Run a scan to generate your first report."/>}</section>}
+function Empty({title,text,action,onAction}){return <div className="empty-state"><span className="empty-mark">⌁</span><h2>{title}</h2><p>{text}</p>{action&&<button className="primary" onClick={onAction}>{action}</button>}</div>}
+function Loading(){return <div className="loading"><span className="spinner"/>Loading scan history...</div>}
