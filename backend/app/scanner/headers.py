@@ -11,16 +11,19 @@ SECURITY_HEADERS = [
 
 def check_headers(url, timeout=10):
     try:
-        r = requests.get(url, timeout=timeout, allow_redirects=True)
+        r = requests.get(url, timeout=timeout, allow_redirects=True, headers={'User-Agent': 'WASA-security-analyzer/1.0'})
         h = {k.lower(): v for k, v in r.headers.items()}
         found = {k: h.get(k) for k in SECURITY_HEADERS}
+        present = [k for k, value in found.items() if value]
+        missing = [k for k, value in found.items() if not value]
         return {
             'available': True,
+            'status': 'Detected' if present else 'Not Detected',
             'status_code': r.status_code,
             'final_url': r.url,
             'headers': found,
-            'present': [k for k, value in found.items() if value],
-            'missing': [k for k, value in found.items() if not value]
+            'present': present,
+            'missing': missing
         }
-    except Exception as e:
-        return {'available': False, 'error': str(e), 'headers': {}}
+    except requests.RequestException as e:
+        return {'available': False, 'status': 'Could Not Determine', 'error': str(e), 'headers': {}, 'present': [], 'missing': []}

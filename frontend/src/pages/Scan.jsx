@@ -15,7 +15,7 @@ export default function Scan({token, onResult, onUnauthorized}){
     setError('')
     try{
       const res = await axios.post(base + '/scan/start', {url}, {headers: {Authorization: `Bearer ${token}`}})
-      onResult(res.data.result)
+      onResult(res.data)
     }catch(e){
       console.error(e)
       if(e.response?.status === 401){
