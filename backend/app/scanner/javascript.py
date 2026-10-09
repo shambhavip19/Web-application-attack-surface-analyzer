@@ -1,6 +1,8 @@
+from urllib.parse import urljoin
+
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+
 
 def find_js(url, timeout=10):
     try:
@@ -11,6 +13,6 @@ def find_js(url, timeout=10):
             src = s.get('src')
             if src:
                 scripts.append(urljoin(r.url, src))
-        return {'available': True, 'status': 'Detected' if scripts else 'Not Detected', 'scripts': scripts, 'page_url': r.url}
+        return {'available': True, 'status': 'AVAILABLE' if scripts else 'NOT AVAILABLE', 'scripts': scripts, 'page_url': r.url, 'final_url': r.url}
     except requests.RequestException as e:
-        return {'available': False, 'status': 'Could Not Determine', 'error': str(e), 'scripts': []}
+        return {'available': False, 'status': 'COULD NOT DETERMINE', 'error': str(e), 'scripts': []}
